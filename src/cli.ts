@@ -46,6 +46,13 @@ function line(text = ''): void {
   process.stdout.write(`${text}\n`);
 }
 
+// A closed pipe (`woodpresser tools | head`) must not look like a crash: Node
+// turns the EPIPE into an unhandled 'error' event and exits non-zero.
+process.stdout.on('error', (error: NodeJS.ErrnoException) => {
+  if (error.code === 'EPIPE') process.exit(0);
+  throw error;
+});
+
 function fail(message: string, hint?: string): never {
   process.stderr.write(`${red('error')} ${message}\n`);
   if (hint) process.stderr.write(`${dim(hint)}\n`);

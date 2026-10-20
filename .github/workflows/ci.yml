@@ -39,4 +39,8 @@ jobs:
         shell: bash
         run: |
           node dist/cli.js version
-          node dist/cli.js tools | grep -q wp_content_get
+          node dist/cli.js tools > tools.txt
+          grep -q wp_content_get tools.txt
+          count=$(grep -c '^  wp_' tools.txt)
+          echo "tools listed: $count"
+          test "$count" -eq 39
