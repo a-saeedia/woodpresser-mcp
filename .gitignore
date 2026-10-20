@@ -1,0 +1,13 @@
+node_modules/
+dist/
+*.log
+*.zip
+.woodpresser.json
+.woodpresser/
+.DS_Store
+Thumbs.db
+.env
+.env.*
+coverage/
+runs/
+tests/it.log

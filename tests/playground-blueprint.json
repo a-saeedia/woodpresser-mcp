@@ -1,0 +1,29 @@
+{
+  "$schema": "https://playground.wordpress.net/blueprint-schema.json",
+  "preferredVersions": {
+    "php": "8.2",
+    "wp": "latest"
+  },
+  "steps": [
+    {
+      "step": "runWpInstallationWizard",
+      "options": {
+        "adminUsername": "admin",
+        "adminPassword": "password"
+      }
+    },
+    {
+      "step": "mkdir",
+      "path": "/wordpress/wp-content/mu-plugins"
+    },
+    {
+      "step": "writeFile",
+      "path": "/wordpress/wp-content/mu-plugins/woodpresser-test-auth.php",
+      "data": "<?php\n/**\n * TEST ONLY: accept HTTP Basic admin:password so the integration suite can\n * exercise the bridge without minting an Application Password.\n */\nadd_filter('determine_current_user', function ($user_id) {\n    if ($user_id) { return $user_id; }\n    $auth = $_SERVER['HTTP_AUTHORIZATION'] ?? ($_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '');\n    if (0 !== stripos($auth, 'Basic ')) { return $user_id; }\n    $decoded = base64_decode(substr($auth, 6));\n    if (false === $decoded || false === strpos($decoded, ':')) { return $user_id; }\n    [$user, $pass] = explode(':', $decoded, 2);\n    if ('admin' === $user && 'password' === $pass) {\n        $u = get_user_by('login', 'admin');\n        return $u ? $u->ID : $user_id;\n    }\n    return $user_id;\n}, 20);\n"
+    },
+    {
+      "step": "activatePlugin",
+      "pluginPath": "woodpresser-bridge/woodpresser-bridge.php"
+    }
+  ]
+}
