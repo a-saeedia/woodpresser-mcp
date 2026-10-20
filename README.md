@@ -172,9 +172,9 @@ woodpresser doctor --site clinic
 
 ## Requirements
 
-- Node.js ≥ 20 (uses `AbortSignal.timeout`, `node:test`, `zlib.crc32`).
-- WordPress ≥ 6.0 with Application Passwords (HTTPS or a `local` environment).
-- PHP ≥ 7.4 for the bridge.
+- Node.js >= 22 (uses `zlib.crc32`, `node:test` globbing, `AbortSignal.timeout`).
+- WordPress >= 6.0 with Application Passwords (HTTPS or a `local` environment).
+- PHP >= 7.4 for the bridge.
 
 ## Development
 
@@ -198,4 +198,4 @@ WOODPRESSER_PLAYGROUND_CLI=/path/to/wp-playground-cli npm run test:integration
 
 ## License
 
-MIT © Arman Saeedi
+MIT (c) Arman Saeedi
