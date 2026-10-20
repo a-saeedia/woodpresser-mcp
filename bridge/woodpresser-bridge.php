@@ -449,9 +449,17 @@ final class Woodpresser_Bridge {
 		$params  = $request->get_param( 'params' );
 		$params  = is_array( $params ) ? array_values( $params ) : array();
 		$flags   = self::flags();
-		$keyword = strtoupper( (string) preg_replace( '/^\s*(?:\/\*.*?\*\/\s*)*/', '', $sql ) );
+		$clean   = self::strip_sql_literals( $sql );
+		$keyword = strtoupper( (string) preg_replace( '/^\s*(?:\/\*.*?\*\/\s*)*/', '', $clean ) );
 		$keyword = strtok( $keyword, " \t\n\r(" );
 		$read    = in_array( $keyword, array( 'SELECT', 'SHOW', 'DESCRIBE', 'DESC', 'EXPLAIN', 'WITH' ), true );
+
+		// MySQL 8 accepts `WITH ... DELETE/UPDATE/INSERT`, so a CTE is only a
+		// read when no write verb follows it.
+		if ( $read && 'WITH' === $keyword
+			&& preg_match( '/\b(INSERT|UPDATE|DELETE|REPLACE|TRUNCATE|ALTER|CREATE|DROP|GRANT)\b/i', $clean ) ) {
+			$read = false;
+		}
 
 		if ( '' === $sql ) {
 			return new WP_Error( 'woodpresser_empty_sql', 'sql is required.', array( 'status' => 400 ) );
@@ -1206,8 +1214,9 @@ final class Woodpresser_Bridge {
 			}
 		} catch ( Throwable $e ) {
 			$error = get_class( $e ) . ': ' . $e->getMessage();
+		} finally {
+			$output = (string) ob_get_clean();
 		}
-		$output = (string) ob_get_clean();
 
 		$result = array(
 			'ok'          => null === $error && null === $fatal,
@@ -1311,10 +1320,15 @@ final class Woodpresser_Bridge {
 			return new WP_Error( 'woodpresser_bad_path', 'Path cannot be resolved.', array( 'status' => 400 ) );
 		}
 
-		$real_root = rtrim( str_replace( '\\', '/', $root ), '/' );
+		$real_root = rtrim( str_replace( '\\', '/', (string) ( realpath( $root ) ?: $root ) ), '/' );
 		$real_norm = str_replace( '\\', '/', (string) $real );
 
-		if ( $real_norm !== $real_root && 0 !== strpos( $real_norm, $real_root . '/' ) ) {
+		// Windows paths are case-insensitive; a case-only difference must not
+		// read as an escape.
+		$cmp_root = '\\' === DIRECTORY_SEPARATOR ? strtolower( $real_root ) : $real_root;
+		$cmp_norm = '\\' === DIRECTORY_SEPARATOR ? strtolower( $real_norm ) : $real_norm;
+
+		if ( $cmp_norm !== $cmp_root && 0 !== strpos( $cmp_norm, $cmp_root . '/' ) ) {
 			return new WP_Error( 'woodpresser_escape', 'Path escapes wp-content.', array( 'status' => 403 ) );
 		}
 
@@ -1348,15 +1362,24 @@ final class Woodpresser_Bridge {
 	}
 
 	/**
+	 * Remove string literals and comments so keyword sniffing cannot be fooled.
+	 *
+	 * @param string $sql SQL.
+	 * @return string
+	 */
+	private static function strip_sql_literals( $sql ) {
+		$stripped = preg_replace( '/\'(?:\\\\.|[^\'\\\\])*\'|"(?:\\\\.|[^"\\\\])*"|`[^`]*`/', '', (string) $sql );
+		return (string) preg_replace( '/--[^\n]*|#[^\n]*|\/\*.*?\*\//s', '', (string) $stripped );
+	}
+
+	/**
 	 * Detect stacked statements.
 	 *
 	 * @param string $sql SQL.
 	 * @return bool
 	 */
 	private static function has_multiple_statements( $sql ) {
-		$stripped = preg_replace( '/\'(?:\\\\.|[^\'\\\\])*\'|"(?:\\\\.|[^"\\\\])*"|`[^`]*`/', '', $sql );
-		$stripped = preg_replace( '/--[^\n]*|#[^\n]*|\/\*.*?\*\//s', '', (string) $stripped );
-		$stripped = rtrim( (string) $stripped, " \t\n\r;" );
+		$stripped = rtrim( self::strip_sql_literals( $sql ), " \t\n\r;" );
 		return false !== strpos( $stripped, ';' );
 	}
 

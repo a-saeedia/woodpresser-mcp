@@ -188,13 +188,7 @@ npm run bridge:zip
 
 `test:integration` boots a real WordPress in **WordPress Playground** (PHP-WASM, no Docker, no PHP install), mounts `bridge/`, activates the plugin, and drives the actual MCP tool handlers through 50+ assertions: auth, claim, PHP eval, SQL guard rails, filesystem jail, snippets, content CRUD, Elementor build/patch/snapshot/restore, meta and audit.
 
-It needs `@wp-playground/cli`:
-
-```bash
-npm i -D @wp-playground/cli
-# or point at an existing install
-WOODPRESSER_PLAYGROUND_CLI=/path/to/wp-playground-cli npm run test:integration
-```
+`@wp-playground/cli` is a dev dependency, so `npm run test:integration` works after `npm install`. To use a different build, set `WOODPRESSER_PLAYGROUND_CLI` to its path.
 
 ## License
 
