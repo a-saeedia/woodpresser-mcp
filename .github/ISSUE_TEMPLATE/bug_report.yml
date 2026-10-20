@@ -1,0 +1,82 @@
+name: Bug report
+description: Something failed — a tool error, a bad response, an install problem.
+title: "[bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before filing: run `woodpresser doctor --site <name>` and remove anything
+        secret from the output. Do not paste your Application Password or bridge
+        token — the CLI never prints them in full, keep it that way.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: The tool you called, the arguments (redacted), and the exact error.
+      placeholder: |
+        wp_php_run { code: "return get_option('blogname');" }
+        -> 403 {"code":"woodpresser_bad_token"}
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Mode
+      options:
+        - core
+        - php
+        - elementor
+        - core + php
+        - all
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: woodpresser version
+      description: Output of `woodpresser version`.
+      placeholder: 0.1.0
+    validations:
+      required: true
+
+  - type: textarea
+    id: doctor
+    attributes:
+      label: doctor output
+      description: `woodpresser doctor --site <name>`, secrets removed.
+      render: text
+    validations:
+      required: false
+
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, Node version, WordPress version, PHP version, hosting.
+      placeholder: Windows 11, Node 22.23.2, WP 6.8.2, PHP 8.2, LiteSpeed shared host
+    validations:
+      required: true
+
+  - type: dropdown
+    id: client
+    attributes:
+      label: MCP client
+      options:
+        - opencode
+        - Claude Code
+        - Cursor
+        - VS Code
+        - other
+    validations:
+      required: true

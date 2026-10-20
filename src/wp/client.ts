@@ -70,7 +70,7 @@ export class WpClient {
         const headers: Record<string, string> = {
           Authorization: this.authHeader,
           Accept: 'application/json',
-          'User-Agent': 'woodpresser-mcp/0.1 (+https://github.com/woodpresser/woodpresser-mcp)',
+          'User-Agent': 'woodpresser-mcp/0.1 (+https://github.com/a-saeedia/woodpresser-mcp)',
         };
         if (options.body !== undefined) headers['Content-Type'] = 'application/json; charset=utf-8';
         if (options.bridge) {

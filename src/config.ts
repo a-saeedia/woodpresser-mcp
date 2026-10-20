@@ -13,7 +13,14 @@ import type { ConfigFile, Mode, SiteConfig } from './wp/types.js';
 import { registerSecrets } from './util/redact.js';
 
 export const ALL_MODES: Mode[] = ['core', 'php', 'elementor'];
-export const DEFAULT_MODES: Mode[] = ['core', 'php', 'elementor'];
+
+/**
+ * Modes a site gets when it names none.
+ *
+ * `core` only. php mode runs arbitrary PHP/SQL and writes files, and the bridge
+ * token is effectively a root credential, so that access is an explicit opt-in.
+ */
+export const DEFAULT_MODES: Mode[] = ['core'];
 
 export function userConfigPath(): string {
   return process.env.WOODPRESSER_CONFIG || join(homedir(), '.woodpresser', 'config.json');

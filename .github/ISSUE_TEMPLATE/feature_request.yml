@@ -1,0 +1,41 @@
+name: Feature request
+description: A tool, a mode, or a behaviour that would make this useful to you.
+title: "[feat] "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The job to be done
+      description: What are you trying to accomplish on the site? Describe the task, not the API.
+      placeholder: I need to change the price of 400 WooCommerce products and keep a log of the old values.
+    validations:
+      required: true
+
+  - type: textarea
+    id: today
+    attributes:
+      label: How you do it today
+      description: The workaround, the plugin, or the manual steps. If the current tools almost do it, say what is missing.
+    validations:
+      required: false
+
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Which mode should own it
+      options:
+        - core (REST only)
+        - php (needs the bridge)
+        - elementor
+        - not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: risk
+    attributes:
+      label: Blast radius
+      description: If this tool were called with the wrong arguments, what is the worst realistic outcome?
+    validations:
+      required: false

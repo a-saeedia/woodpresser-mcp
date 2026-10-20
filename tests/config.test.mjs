@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 const base = new URL('../dist/', import.meta.url);
-const { normalizeUrl, normalizeSite, mask, siteFromEnv, ALL_MODES } = await import(
+const { normalizeUrl, normalizeSite, mask, siteFromEnv, ALL_MODES, DEFAULT_MODES } = await import(
   new URL('config.js', base).href
 );
 
@@ -29,14 +29,21 @@ test('normalizeSite removes password spaces and defaults modes', () => {
   assert.equal(site.timeoutMs, 30000);
 });
 
-test('normalizeSite falls back to all modes when none are valid', () => {
+test('normalizeSite falls back to the safe default when no mode is valid', () => {
   const site = normalizeSite({
     url: 'https://example.com',
     username: 'a',
     appPassword: 'b',
     modes: ['nope'],
   });
-  assert.deepEqual(site.modes, ALL_MODES);
+  assert.deepEqual(site.modes, DEFAULT_MODES);
+  assert.deepEqual(DEFAULT_MODES, ['core']);
+  assert.ok(ALL_MODES.includes('php'));
+});
+
+test('normalizeSite adds no php access unless it was asked for', () => {
+  const site = normalizeSite({ url: 'https://example.com', username: 'a', appPassword: 'b' });
+  assert.deepEqual(site.modes, ['core']);
 });
 
 test('mask never reveals the middle of a secret', () => {

@@ -32,6 +32,9 @@ jobs:
       - name: Unit tests
         run: npm test
 
+      - name: Package install smoke test
+        run: npm run verify:package
+
       - name: Package the bridge plugin
         run: npm run bridge:zip
 

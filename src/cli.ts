@@ -188,7 +188,7 @@ async function cmdInit(parsed: Parsed): Promise<void> {
     (await ask('Application Password (Users → Profile → Application Passwords)'));
   if (!password) fail('An application password is required.');
 
-  const modes = parseModes(str(flags, 'modes'));
+  const modes = await resolveInitModes(flags);
   const url = normalizeUrl(urlInput);
   const host = new URL(url).hostname.replace(/^www\./, '');
   const siteName = str(flags, 'site') ?? host.replace(/[^a-z0-9]+/gi, '-');
@@ -277,6 +277,26 @@ async function cmdInit(parsed: Parsed): Promise<void> {
   }
   line(dim('Restart your MCP client (opencode) to load the server.'));
   line();
+}
+
+/**
+ * Modes for a new site.
+ *
+ * Without an explicit --modes flag this asks, defaulting to no: php mode is
+ * root-equivalent on the site and nobody should get it by pressing Enter.
+ */
+async function resolveInitModes(flags: Parsed['flags']): Promise<Mode[]> {
+  const explicit = str(flags, 'modes');
+  if (explicit) return parseModes(explicit);
+
+  const answer = (await ask('Also enable php + elementor modes? [y/N]', 'n')).toLowerCase();
+  if (answer !== 'y' && answer !== 'yes') return DEFAULT_MODES;
+
+  line();
+  line(`${yellow('!')} php mode runs arbitrary PHP, SQL and file writes on the site.`);
+  line(dim('  Treat the bridge token like a root password. Revoke it in the bridge flags'));
+  line(dim('  when you are done, or re-init with --modes core.'));
+  return ALL_MODES;
 }
 
 function parseModes(value: string | undefined): Mode[] {
@@ -551,7 +571,7 @@ ${bold('Environment')}
   WOODPRESSER_BRIDGE_TOKEN, WOODPRESSER_SITE, WOODPRESSER_MODES,
   WOODPRESSER_CONFIG, WOODPRESSER_BRIDGE_FILE, NO_COLOR
 
-${bold('Docs')} https://github.com/woodpresser/woodpresser-mcp
+${bold('Docs')} https://github.com/a-saeedia/woodpresser-mcp
 `);
 }
 

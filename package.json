@@ -26,7 +26,9 @@
     "test": "node --test \"tests/*.test.mjs\"",
     "test:integration": "node tests/integration-playground.mjs",
     "bridge:zip": "node scripts/zip-bridge.mjs",
-    "prepublishOnly": "npm run build && npm test"
+    "verify:package": "node scripts/verify-package.mjs",
+    "prepare": "npm run build",
+    "prepublishOnly": "npm run build && npm test && npm run verify:package"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.1",

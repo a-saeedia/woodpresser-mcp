@@ -1,5 +1,10 @@
 # Woodpresser
 
+[![CI](https://github.com/a-saeedia/woodpresser-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/a-saeedia/woodpresser-mcp/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/npm/v/woodpresser-mcp.svg)](https://www.npmjs.com/package/woodpresser-mcp)
+[![node](https://img.shields.io/node/v/woodpresser-mcp.svg)](https://nodejs.org)
+[![license](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 **A WordPress MCP server for coding agents.** Give Claude, opencode, Cursor or any MCP client structured access to a real WordPress site — content, plugins, PHP, the database, the filesystem, and Elementor page data — through one typed tool surface.
 
 ```
@@ -24,6 +29,16 @@ WordPress is where a huge share of the web lives, but agents are bad at it. They
 ```bash
 npx woodpresser-mcp init
 ```
+
+Or install it once:
+
+```bash
+npm i -g woodpresser-mcp && woodpresser init
+# from source, no registry:
+npm i -g github:a-saeedia/woodpresser-mcp
+```
+
+After your credentials, `init` asks whether to enable **php + elementor**. The default is no: you get 19 content tools and nothing that can execute code. Answer `y` when you actually want PHP, SQL and filesystem access, or be explicit in a script with `--modes core,php,elementor`.
 
 `init` walks through:
 
@@ -91,7 +106,9 @@ The token is compared with `hash_equals`. Without `WOODPRESSER_TOKEN`, the first
 
 ## Modes
 
-Set at init time with `--modes core,php,elementor`, or via `WOODPRESSER_MODES`.
+Set per site. A new site starts in `core` only; add `php` and/or `elementor` at init time (`--modes core,php,elementor`), in `~/.woodpresser/config.json`, or via `WOODPRESSER_MODES`.
+
+A mode you did not enable registers no tools at all. The model cannot call what is not in its tool list, so the safest configuration is also the one with the smallest prompt.
 
 | Mode | Tools | Use when |
 | --- | --- | --- |
@@ -170,6 +187,21 @@ woodpresser doctor --site clinic
 
 `doctor` reports REST, auth, bridge, WordPress and PHP versions, Elementor presence and every flag — the fastest way to tell whether a failure is credentials, a plugin, or a permission.
 
+## Troubleshooting
+
+| Symptom | Cause | Fix |
+| --- | --- | --- |
+| `401` on every call | Login password instead of an Application Password, or the `Authorization` header is stripped by the host | Create one at **Users → Profile → Application Passwords**; on LiteSpeed/Apache check that `HTTP_AUTHORIZATION` reaches PHP |
+| `403 woodpresser_bad_token` | Config and bridge disagree after a re-init or restore | `woodpresser bridge claim --site <name>` re-binds both sides |
+| `404 rest_no_route` | Bridge installed but not activated, or the plugin folder was uploaded inside another folder | Activate it in **Plugins**; the plugin file must be `wp-content/plugins/woodpresser-bridge/woodpresser-bridge.php` |
+| `428 woodpresser_not_claimed` | Bridge is active but no token was ever claimed | `woodpresser bridge claim --site <name>` |
+| `429 woodpresser_rate_limited` | More than 240 requests in a minute from one administrator | Batch your calls; the bucket resets after 60s |
+| `Path escapes wp-content` | Path resolved outside the jail, or a symlinked upload directory | Pass paths relative to `wp-content`; the jail follows real paths |
+| Tools missing in the client | Mode not enabled, or the client has not reloaded the server | `woodpresser tools --site <name>`, then restart the client |
+| `node: bad option` / `ERR_UNKNOWN_FILE_EXTENSION` | Node older than 22 | `node -v`, upgrade to 22 or 24 |
+
+`woodpresser doctor --site <name>` prints each layer — REST, auth, bridge, versions, flags — and says which one failed.
+
 ## Requirements
 
 - Node.js >= 22 (uses `zlib.crc32`, `node:test` globbing, `AbortSignal.timeout`).
@@ -193,3 +225,5 @@ npm run bridge:zip
 ## License
 
 MIT (c) Arman Saeedi
+
+Change history: [CHANGELOG.md](CHANGELOG.md). Contributing: [CONTRIBUTING.md](CONTRIBUTING.md). Security: [SECURITY.md](SECURITY.md).
