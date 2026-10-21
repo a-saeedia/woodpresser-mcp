@@ -35,6 +35,8 @@ That form works today and always builds from source (`prepare` runs `tsc`), so i
 
 Node >= 22 is the only prerequisite.
 
+Install it globally. The MCP entry `install-mcp` writes contains an absolute path to the install, so a clone inside a temp directory works until something cleans temp and then your client cannot start the server.
+
 After your credentials, `init` asks whether to enable **php + elementor**. The default is no: you get 19 content tools and nothing that can execute code. Answer `y` when you actually want PHP, SQL and filesystem access, or be explicit in a script with `--modes core,php,elementor`.
 
 `init` walks through:
