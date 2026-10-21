@@ -27,16 +27,13 @@ WordPress is where a huge share of the web lives, but agents are bad at it. They
 ## Install
 
 ```bash
-npx woodpresser-mcp init
-```
-
-Or install it once:
-
-```bash
-npm i -g woodpresser-mcp && woodpresser init
-# from source, no registry:
 npm i -g github:a-saeedia/woodpresser-mcp
+woodpresser init
 ```
+
+That form works today and always builds from source (`prepare` runs `tsc`), so it needs `git` on PATH and about a minute. Once 0.1.0 is on the registry, `npm i -g woodpresser-mcp` and `npx woodpresser-mcp init` do the same thing faster.
+
+Node >= 22 is the only prerequisite.
 
 After your credentials, `init` asks whether to enable **php + elementor**. The default is no: you get 19 content tools and nothing that can execute code. Answer `y` when you actually want PHP, SQL and filesystem access, or be explicit in a script with `--modes core,php,elementor`.
 
@@ -85,7 +82,7 @@ Restart the client afterwards.
 The core REST API covers posts, media, terms, users, plugins, themes and settings. It cannot evaluate PHP, inspect the database, or touch files. The bridge fills that gap.
 
 - **Single file.** `bridge/woodpresser-bridge.php`, no build step, no Composer.
-- **Upload once.** Host file manager, SFTP, or wp-admin → Plugins → Add New → Upload (`npm run bridge:zip` produces `dist/woodpresser-bridge.zip` with the correct folder layout).
+- **Upload once.** `woodpresser init` writes `woodpresser-bridge.zip` next to you when the bridge is missing; upload it at **wp-admin → Plugins → Add New → Upload Plugin** and activate. The archive already contains the `woodpresser-bridge/` folder wp-admin expects. No SFTP needed; `npm run bridge:zip` builds the same file into `dist/`.
 - **Or pin the token** in `wp-config.php` and skip the claim flow entirely:
 
 ```php

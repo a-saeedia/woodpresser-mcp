@@ -6,6 +6,24 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `init` writes `woodpresser-bridge.zip` alongside the plugin file and prints the
+  wp-admin upload URL. wp-admin only accepts archives, so the old "upload this
+  .php" instruction was a dead end for anyone without SFTP. `woodpresser bridge
+  copy` writes the same pair.
+- `src/util/zip.ts` — the ZIP writer is now shared by the CLI and
+  `scripts/zip-bridge.mjs`, with tests covering the archive structure, CRCs and
+  the folder layout wp-admin expects.
+
+### Changed
+
+- README leads with the install form that works today
+  (`npm i -g github:a-saeedia/woodpresser-mcp`); `npx` takes over once the
+  package is on the registry.
+- `npm run bridge:zip` builds first, so there is one implementation of the
+  archive writer rather than two.
+
 ## [0.1.0] — 2026-10-20
 
 First public release.

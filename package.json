@@ -25,7 +25,7 @@
     "start": "node dist/cli.js mcp",
     "test": "node --test \"tests/*.test.mjs\"",
     "test:integration": "node tests/integration-playground.mjs",
-    "bridge:zip": "node scripts/zip-bridge.mjs",
+    "bridge:zip": "npm run build && node scripts/zip-bridge.mjs",
     "verify:package": "node scripts/verify-package.mjs",
     "prepare": "npm run build",
     "prepublishOnly": "npm run build && npm test && npm run verify:package"

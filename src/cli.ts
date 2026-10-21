@@ -3,7 +3,7 @@
  * Woodpresser CLI: connect a site, install the bridge, register the MCP server,
  * and diagnose problems. `woodpresser mcp` is what the MCP client launches.
  */
-import { copyFileSync, existsSync, mkdirSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createInterface } from 'node:readline/promises';
@@ -27,6 +27,7 @@ import type { Mode, SiteConfig } from './wp/types.js';
 import { startServer } from './index.js';
 import { installMcp, uninstallMcp, ALL_TARGETS, type McpTarget } from './install/mcp.js';
 import { VERSION } from './version.js';
+import { bridgeZip } from './util/zip.js';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { createContext } from './tools/context.js';
 import { registerTools } from './tools/register.js';
@@ -143,27 +144,42 @@ function bridgeSource(): string {
   return found;
 }
 
-function copyBridge(outDir: string): string {
-  const source = bridgeSource();
-  const target = join(resolve(outDir), 'woodpresser-bridge.php');
-  mkdirSync(dirname(target), { recursive: true });
-  copyFileSync(source, target);
-  return target;
+interface BridgeFiles {
+  php: string;
+  zip: string;
 }
 
-function printBridgeInstructions(target: string, site?: SiteConfig): void {
+/**
+ * Drop the plugin and an uploadable archive next to each other.
+ *
+ * wp-admin only accepts archives, so writing the bare .php and telling the
+ * user to zip it is a dead end for anyone without SFTP.
+ */
+function copyBridge(outDir: string): BridgeFiles {
+  const source = bridgeSource();
+  const dir = resolve(outDir);
+  const php = join(dir, 'woodpresser-bridge.php');
+  const zip = join(dir, 'woodpresser-bridge.zip');
+  mkdirSync(dirname(php), { recursive: true });
+  copyFileSync(source, php);
+  const plugin = readFileSync(source);
+  writeFileSync(zip, bridgeZip(plugin, statSync(source).mtime));
+  return { php, zip };
+}
+
+function printBridgeInstructions(files: BridgeFiles, site?: SiteConfig): void {
   line();
   line(bold('Install the bridge plugin (one time)'));
-  line(`  1. Upload ${cyan(target)} to ${cyan('wp-content/plugins/woodpresser-bridge/woodpresser-bridge.php')}`);
-  line(`     via your host file manager, SFTP, or the wp-admin "Add Plugin → Upload" screen.`);
-  line(`  2. Activate ${bold('Woodpresser Bridge')} in Plugins.`);
-  if (site) {
-    line(`  3. Run: ${cyan('woodpresser bridge claim --site ' + (site.label ?? 'default'))}`);
-  } else {
-    line(`  3. Run: ${cyan('woodpresser bridge claim')}`);
-  }
+  line(`  1. Open ${cyan('wp-admin → Plugins → Add New → Upload Plugin')}`);
+  if (site) line(`     ${cyan(`${site.url}/wp-admin/plugin-install.php?tab=upload`)}`);
+  line(`  2. Upload ${cyan(files.zip)} and activate ${bold('Woodpresser Bridge')}.`);
+  line(`     ${dim(`Without wp-admin access: unzip it into wp-content/plugins/, or copy ${files.php} to`)}`);
+  line(`     ${dim('wp-content/plugins/woodpresser-bridge/woodpresser-bridge.php and activate it.')}`);
+  line(
+    `  3. Run: ${cyan('woodpresser bridge claim' + (site ? ` --site ${site.label ?? 'default'}` : ''))}`,
+  );
   line();
-  line(dim('  Hardened alternative: add to wp-config.php before /* That\'s all */'));
+  line(dim("  Hardened alternative: add to wp-config.php before /* That's all */"));
   line(dim(`    define('WOODPRESSER_TOKEN', '<the token in your config>');`));
 }
 
@@ -465,7 +481,7 @@ async function cmdBridge(parsed: Parsed): Promise<void> {
   if (action === 'copy') {
     const out = str(parsed.flags, 'out') ?? process.cwd();
     const target = copyBridge(out);
-    line(`${green('ok')} ${target}`);
+    line(`${green('ok')} ${target.zip}`);
     printBridgeInstructions(target);
     return;
   }
