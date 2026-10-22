@@ -272,7 +272,7 @@ async function cmdInit(parsed: Parsed): Promise<void> {
   line(`${dim('site')}    ${bold(url)}`);
   line(`${dim('user')}    ${username}`);
   line(`${dim('modes')}   ${modes.join(', ')}`);
-  line(`${dim('token')}   ${mask(token)}${existing ? dim(' (reused)') : ''}`);
+  line(`${dim('token')}   ${token ? mask(token) : dim('none yet - core mode only')}${existing ? dim(' (reused)') : ''}`);
   line();
 
   const client = new WpClient(site);
@@ -300,10 +300,34 @@ async function cmdInit(parsed: Parsed): Promise<void> {
         line(`${green('ok')} bridge token rotated to the new value`);
         bridgeReady = true;
       } catch (error) {
-        line(`${yellow('!')} bridge is already claimed: ${(error as Error).message}`);
-        line(dim('  Pass the existing token with --token to reuse it, or claim with a new one from the current holder.'));
-        line(dim('  The token saved now is the one the CLI will use.'));
-        bridgeReady = true;
+        // The bridge only rotates its token for a caller that already holds it,
+        // so a second machine cannot bind by claiming. Saving the freshly minted
+        // token here would leave a config that looks ready and answers 403 to
+        // every bridge call, so ask for the real one and record nothing on skip.
+        line(`${yellow('!')} this bridge is already claimed: ${(error as Error).message}`);
+        const supplied = (
+          await ask('Paste the bridge token from the machine that claimed it (blank to skip)', '')
+        ).trim();
+
+        if (supplied) {
+          const retry = new WpClient({ ...site, bridgeToken: supplied });
+          try {
+            await retry.bridge('/claim', { method: 'POST', body: { token: supplied } });
+            site.bridgeToken = supplied;
+            line(`${green('ok')} bound with the supplied token`);
+            bridgeReady = true;
+          } catch (retryError) {
+            fail(
+              `That token was rejected: ${(retryError as Error).message}`,
+              `Run \`woodpresser sites\` on the machine that set this site up and copy its token, then: woodpresser init --site ${siteName} --token <token>`,
+            );
+          }
+        } else {
+          site.bridgeToken = undefined;
+          line(dim('  Core tools work now; bridge tools stay off on this machine.'));
+          line(dim('  (the token printed above was discarded - nothing to store.)'));
+          line(`  ${cyan(`woodpresser init --site ${siteName} --token <token>`)}`);
+        }
       }
     } else {
       try {

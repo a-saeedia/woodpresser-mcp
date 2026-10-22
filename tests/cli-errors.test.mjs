@@ -14,6 +14,8 @@ import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
 
@@ -139,3 +141,67 @@ test('a missing bridge route names the nested-folder trap', async () => {
     await stop(server);
   }
 });
+
+/**
+ * A second machine cannot claim a bridge that is already bound: the bridge only
+ * rotates its token for a caller that already holds it. init used to save the
+ * freshly minted token anyway and print "Ready.", leaving a config that looked
+ * correct and answered 403 to every bridge call.
+ */
+test('init on an already-claimed bridge stores no token and does not claim success', async () => {
+  const { server, port } = await startSite({
+    '/wp-json/': () => [200, { name: 'Fake Site' }],
+    '/wp-json/wp/v2/users/me': () => [200, { id: 1, slug: 'admin', name: 'Admin' }],
+    '/wp-json/woodpresser/v1/ping': () => [
+      200,
+      { plugin_version: '1.0.0', wp_version: '6.7', php_version: '8.3', claimed: true, flags: {} },
+    ],
+    '/wp-json/woodpresser/v1/claim': () => [
+      403,
+      {
+        code: 'woodpresser_already_claimed',
+        message: 'Bridge is already claimed. Present the current X-Woodpresser-Token to rotate it.',
+        data: { status: 403 },
+      },
+    ],
+  });
+
+  const dir = mkdtempSync(join(tmpdir(), 'wp-init-'));
+  const configPath = join(dir, 'config.json');
+  try {
+    const { stdout } = await run(
+      process.execPath,
+      [
+        cli,
+        'init',
+        '--url',
+        `http://127.0.0.1:${port}`,
+        '--user',
+        'admin',
+        '--password',
+        'abcd efgh 1234 ijkl mnop 5678',
+        '--modes',
+        'core',
+        '--out',
+        dir,
+        '--config',
+        configPath,
+        '--no-mcp',
+      ],
+      { encoding: 'utf8', timeout: 30_000, env: { ...process.env, NO_COLOR: '1' } },
+    );
+
+    assert.match(stdout, /already claimed/);
+    assert.match(stdout, /Core tools work now/);
+    assert.doesNotMatch(stdout, /^Ready\.$/m, 'must not report success it cannot back up');
+
+    const config = JSON.parse(readFileSync(configPath, 'utf8'));
+    const site = Object.values(config.sites)[0];
+    assert.ok(site, 'the site is still saved so core mode works');
+    assert.ok(!site.bridgeToken, 'no token is stored for a bridge this machine cannot control');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+    await stop(server);
+  }
+});
+

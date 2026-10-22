@@ -57,6 +57,12 @@ export class WpError extends Error {
     if (this.code === 'woodpresser_not_claimed') {
       return 'Bridge is installed but not claimed. Run: woodpresser bridge claim';
     }
+    if (this.code === 'woodpresser_already_claimed') {
+      return 'Another machine claimed this bridge. Copy its token (woodpresser sites there) and run: woodpresser init --token <token>';
+    }
+    if (this.code === 'woodpresser_token_locked') {
+      return 'WOODPRESSER_TOKEN is defined in wp-config.php, so the token cannot change over HTTP. Put the same value in the client config.';
+    }
     if (this.code === 'application_passwords_disabled' || this.code === 'app_passwords_disabled') {
       return 'Application Passwords are disabled on this site (often by a security plugin). Enable them, or define WOODPRESSER_TOKEN and use the bridge directly.';
     }

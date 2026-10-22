@@ -8,6 +8,19 @@ All notable changes to this project are documented here. The format follows
 
 Nothing yet.
 
+## [0.1.2] - 2026-10-21
+
+### Fixed
+
+- `init` against a bridge another machine already claimed no longer saves the
+  token it just minted and prints `Ready.` The bridge only rotates its token for
+  a caller that already holds it, so the old behaviour stored a config that
+  answered 403 to every bridge call. It now asks for the existing token, stores
+  nothing when you skip, and says plainly that core mode still works.
+- Hints for `woodpresser_already_claimed` and `woodpresser_token_locked`: copy
+  the token from the machine that claimed the bridge; `wp-config.php` locks it.
+- The token line reads `none yet - core mode only` instead of an empty mask.
+
 ## [0.1.1] - 2026-10-21
 
 ### Added
