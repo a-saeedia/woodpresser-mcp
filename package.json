@@ -1,6 +1,6 @@
 {
   "name": "woodpresser-mcp",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Structured, mode-gated WordPress access for AI agents. PHP, core WP, and Elementor in one MCP server.",
   "license": "MIT",
   "author": "Arman Saeedi",

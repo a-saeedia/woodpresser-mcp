@@ -7,7 +7,7 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -45,4 +45,10 @@ test('a site record with no modes is core-only, never everything', () => {
   assert.equal(hasMode(ctx, 'core'), true);
   assert.equal(hasMode(ctx, 'php'), false, 'a site without modes must not get PHP');
   assert.equal(hasMode(ctx, 'elementor'), false);
+});
+
+test('the reported version matches package.json', async () => {
+  const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+  const { VERSION } = await import(new URL('version.js', base).href);
+  assert.equal(VERSION, pkg.version, 'bump both together, or the tag lies about what it ships');
 });

@@ -31,7 +31,7 @@ npm i -g github:a-saeedia/woodpresser-mcp
 woodpresser init
 ```
 
-That form works today and always builds from source (`prepare` runs `tsc`), so it needs `git` on PATH and about a minute. Once 0.1.0 is on the registry, `npm i -g woodpresser-mcp` and `npx woodpresser-mcp init` do the same thing faster.
+That form works today and always builds from source (`prepare` runs `tsc`), so it needs `git` on PATH and about a minute. Once `woodpresser-mcp` is on the registry (tracked in the [changelog](CHANGELOG.md)), `npm i -g woodpresser-mcp` and `npx woodpresser-mcp init` do the same thing faster.
 
 Node >= 22 is the only prerequisite.
 

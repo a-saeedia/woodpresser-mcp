@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+Nothing yet.
+
+## [0.1.1] - 2026-10-21
+
 ### Added
 
 - Startup guard: on Node older than 22 the CLI and server exit immediately with
@@ -23,7 +27,6 @@ All notable changes to this project are documented here. The format follows
 - Tests: a fake WordPress exercises the 401 / unreachable / bad-token /
   missing-route paths of `doctor`, and a config test proves the token survives a
   re-init across an `http`→`https` change (43 unit tests total).
-
 - `init` writes `woodpresser-bridge.zip` alongside the plugin file and prints the
   wp-admin upload URL. wp-admin only accepts archives, so the old "upload this
   .php" instruction was a dead end for anyone without SFTP. `woodpresser bridge
