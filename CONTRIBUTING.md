@@ -83,6 +83,32 @@ integration suite fails at `/ping`.
 - Commit messages: `type(scope): imperative summary`, then the why. Types used
   here are `feat`, `fix`, `docs`, `test`, `chore`, `ci`.
 
+## Releasing
+
+`prepublishOnly` runs the build, the unit suite and the package check, so a
+release cannot ship a tarball that does not install.
+
+```bash
+# 1. bump both, in one commit
+#    package.json  "version"
+#    src/version.ts VERSION   (a test fails if these drift)
+# 2. CHANGELOG: move [Unreleased] to [x.y.z] - YYYY-MM-DD
+npm run build && npm test && npm run verify:package
+git commit -am "chore(release): x.y.z" && git tag -a vx.y.z -m "vx.y.z"
+git push origin main --follow-tags
+```
+
+Then publish and prove it, in this order:
+
+```bash
+npm login            # once per machine
+npm publish          # public scoped-free name: woodpresser-mcp
+cd "$(mktemp -d)" && npx --yes woodpresser-mcp version   # must print x.y.z
+```
+
+Do not rewrite a tag that has a GitHub release. Cut the next patch version
+instead; the release notes are the only record of what people installed.
+
 ## Security
 
 Read [SECURITY.md](SECURITY.md) before touching auth, redaction or the
