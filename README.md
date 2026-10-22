@@ -195,15 +195,18 @@ woodpresser doctor --site clinic
 | `404 rest_no_route` | Bridge installed but not activated, or the plugin folder was uploaded inside another folder | Activate it in **Plugins**; the plugin file must be `wp-content/plugins/woodpresser-bridge/woodpresser-bridge.php` |
 | `428 woodpresser_not_claimed` | Bridge is active but no token was ever claimed | `woodpresser bridge claim --site <name>` |
 | `429 woodpresser_rate_limited` | More than 240 requests in a minute from one administrator | Batch your calls; the bucket resets after 60s |
+| `application_passwords_disabled` | The site, usually via a security plugin, turned Application Passwords off | Enable them in **Users → Profile**, or define `WOODPRESSER_TOKEN` and use the bridge token |
 | `Path escapes wp-content` | Path resolved outside the jail, or a symlinked upload directory | Pass paths relative to `wp-content`; the jail follows real paths |
 | Tools missing in the client | Mode not enabled, or the client has not reloaded the server | `woodpresser tools --site <name>`, then restart the client |
-| `node: bad option` / `ERR_UNKNOWN_FILE_EXTENSION` | Node older than 22 | `node -v`, upgrade to 22 or 24 |
+| `node: bad option` / `ERR_UNKNOWN_FILE_EXTENSION` / a stack trace about an export | Node older than 22 | `node -v`, upgrade to 22 or 24 — the CLI exits with an upgrade line instead of a link error once booted |
+| `init` warns that the URL is plain HTTP | Application Passwords are only offered over HTTPS unless the site sets `WP_ENVIRONMENT_TYPE=local` | Use the `https://` URL, or add that constant to `wp-config.php` |
+| You must point a second machine at a site already configured | Re-running `init` reuses the stored token instead of minting a new one | Run `woodpresser init` with the same URL; pass `--token` only to force a rotation |
 
-`woodpresser doctor --site <name>` prints each layer — REST, auth, bridge, versions, flags — and says which one failed.
+`woodpresser doctor --site <name>` prints each layer — REST, auth, bridge, versions, flags — and says which one failed. On a rejected login it also prints the one `curl` command that separates a wrong Application Password from a host that strips the `Authorization` header.
 
 ## Requirements
 
-- Node.js >= 22 (uses `zlib.crc32`, `node:test` globbing, `AbortSignal.timeout`).
+- Node.js >= 22 (uses `zlib.crc32`, `node:test` globbing, `AbortSignal.timeout`). Older runtimes exit at startup with an upgrade line.
 - WordPress >= 6.0 with Application Passwords (HTTPS or a `local` environment).
 - PHP >= 7.4 for the bridge.
 

@@ -3,6 +3,7 @@
  * Woodpresser CLI: connect a site, install the bridge, register the MCP server,
  * and diagnose problems. `woodpresser mcp` is what the MCP client launches.
  */
+import './boot.js';
 import { copyFileSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -13,6 +14,7 @@ import { homedir } from 'node:os';
 import {
   DEFAULT_MODES,
   ALL_MODES,
+  findSiteByUrl,
   loadConfig,
   mask,
   normalizeUrl,
@@ -24,6 +26,7 @@ import {
 } from './config.js';
 import { WpClient } from './wp/client.js';
 import type { Mode, SiteConfig } from './wp/types.js';
+import type { WpError } from './wp/types.js';
 import { startServer } from './index.js';
 import { installMcp, uninstallMcp, ALL_TARGETS, type McpTarget } from './install/mcp.js';
 import { VERSION } from './version.js';
@@ -183,6 +186,47 @@ function printBridgeInstructions(files: BridgeFiles, site?: SiteConfig): void {
   line(dim(`    define('WOODPRESSER_TOKEN', '<the token in your config>');`));
 }
 
+/** Plain HTTP means no Application Passwords, and that deserves a warning. */
+function warnInsecureTransport(url: string): void {
+  if (!url.startsWith('http://')) return;
+  const host = new URL(url).hostname;
+  if (host === 'localhost' || host === '127.0.0.1' || host.endsWith('.local') || host.endsWith('.test')) return;
+  line();
+  line(`${yellow('!')} ${url} is plain HTTP. WordPress only offers Application Passwords over HTTPS,`);
+  line(dim('  or with WP_ENVIRONMENT_TYPE=local in wp-config.php. Use the https:// URL if the site has one.'));
+}
+
+/**
+ * Explain a rejected login in terms the user can act on.
+ *
+ * A 401 has two causes that are indistinguishable from here: the password is
+ * wrong, or a proxy in front of WordPress drops the Authorization header. The
+ * public REST index tells us the site itself is fine; the curl line in the hint
+ * separates the two.
+ */
+async function explainAuthFailure(client: WpClient, url: string): Promise<string> {
+  try {
+    await client.request<Record<string, unknown>>('/wp-json/');
+  } catch {
+    return [
+      'The site did not answer /wp-json/ at all.',
+      'Check the URL, that WordPress is running, and that a security plugin is not blocking the REST API.',
+    ].join('\n');
+  }
+
+  return [
+    'The site answers REST but rejects the credentials. Two causes look identical here:',
+    '  1. Wrong password. Create one at',
+    `     ${url}/wp-admin/profile.php#application-passwords-section`,
+    '     (Application Passwords, not your login password).',
+    '  2. The host strips the Authorization header (LiteSpeed, Apache, some CDNs).',
+    "     Test it: curl -sS -u 'USER:APP PASSWORD' '" + url + "/wp-json/wp/v2/users/me?context=edit'",
+    '     If curl works and this does not, it is the header. Fix: add',
+    '     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]',
+    '     to the top of .htaccess, or ship the mu-plugin from SECURITY.md.',
+  ].join('\n');
+}
+
 function randomToken(): string {
   return randomBytes(32).toString('base64url');
 }
@@ -208,7 +252,12 @@ async function cmdInit(parsed: Parsed): Promise<void> {
   const url = normalizeUrl(urlInput);
   const host = new URL(url).hostname.replace(/^www\./, '');
   const siteName = str(flags, 'site') ?? host.replace(/[^a-z0-9]+/gi, '-');
-  const token = str(flags, 'token') ?? randomToken();
+
+  // Re-running init is the most common "fix", and a fresh token would break every
+  // other machine pointed at this site. Reuse what is already stored.
+  const existing = findSiteByUrl(url);
+  const token = str(flags, 'token') ?? existing?.site.bridgeToken ?? randomToken();
+  warnInsecureTransport(url);
 
   const site: SiteConfig = {
     url,
@@ -223,7 +272,7 @@ async function cmdInit(parsed: Parsed): Promise<void> {
   line(`${dim('site')}    ${bold(url)}`);
   line(`${dim('user')}    ${username}`);
   line(`${dim('modes')}   ${modes.join(', ')}`);
-  line(`${dim('token')}   ${mask(token)}`);
+  line(`${dim('token')}   ${mask(token)}${existing ? dim(' (reused)') : ''}`);
   line();
 
   const client = new WpClient(site);
@@ -233,7 +282,8 @@ async function cmdInit(parsed: Parsed): Promise<void> {
   try {
     me = await client.rest<Record<string, unknown>>('/users/me', { query: { context: 'edit' } });
   } catch (error) {
-    fail(`Authentication failed: ${(error as Error).message}`, 'Use an Application Password, not your login password.');
+    const hint = await explainAuthFailure(client, url);
+    fail(`Authentication failed: ${(error as Error).message}`, hint);
   }
   line(`${green('ok')} authenticated as ${bold(String(me.slug ?? me.name))} (id ${me.id})`);
 
@@ -379,19 +429,31 @@ async function cmdDoctor(parsed: Parsed): Promise<void> {
   line();
 
   const rows: Array<[string, boolean, string]> = [];
+  const notes: string[] = [];
+  let authOk = false;
 
+  let restOk = false;
   try {
     const index = await client.request<Record<string, unknown>>('/wp-json/');
+    restOk = true;
     rows.push(['REST API', true, String(index.name ?? '')]);
   } catch (error) {
     rows.push(['REST API', false, (error as Error).message]);
+    notes.push(
+      [
+        'The site did not answer /wp-json/ at all.',
+        'Check the URL, that WordPress is running, and that a security plugin is not blocking the REST API.',
+      ].join('\n'),
+    );
   }
 
   try {
     const me = await client.rest<Record<string, unknown>>('/users/me', { query: { context: 'edit' } });
+    authOk = true;
     rows.push(['Auth', true, `${me.slug} (id ${me.id})`]);
   } catch (error) {
     rows.push(['Auth', false, (error as Error).message]);
+    if (restOk) notes.push(await explainAuthFailure(client, site.url));
   }
 
   let ping: Record<string, unknown> | null = null;
@@ -399,7 +461,9 @@ async function cmdDoctor(parsed: Parsed): Promise<void> {
     ping = await client.bridge<Record<string, unknown>>('/ping');
     rows.push(['Bridge', true, `v${ping.plugin_version} claimed=${ping.claimed}`]);
   } catch (error) {
-    rows.push(['Bridge', false, (error as Error).message]);
+    const bridgeError = error as WpError;
+    rows.push(['Bridge', false, bridgeError.message]);
+    if (bridgeError.hint && authOk) notes.push(bridgeError.hint);
   }
 
   if (ping) {
@@ -421,6 +485,11 @@ async function cmdDoctor(parsed: Parsed): Promise<void> {
 
   for (const [label, ok, detail] of rows) {
     line(`  ${ok ? green('✓') : red('✗')} ${label.padEnd(14)} ${dim(detail)}`);
+  }
+
+  for (const note of notes) {
+    line();
+    line(note);
   }
 
   line();

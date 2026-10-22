@@ -3,6 +3,7 @@
  *
  * IMPORTANT: stdout is the protocol channel. Diagnostics must go to stderr.
  */
+import './boot.js';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { resolveSite } from './config.js';

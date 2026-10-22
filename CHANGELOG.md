@@ -8,6 +8,22 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
+- Startup guard: on Node older than 22 the CLI and server exit immediately with
+  the version they found and the upgrade command, instead of a link error naming
+  an export the user has never heard of.
+- `doctor` explains a rejected login instead of echoing the status code: it
+  separates a wrong Application Password from a host that strips the
+  `Authorization` header, and prints the `curl` line and `.htaccess` rule that
+  tell them apart. Bridge failures point at `bridge claim`.
+- `init` warns when the site URL is plain HTTP, because Application Passwords are
+  only offered over HTTPS (or with `WP_ENVIRONMENT_TYPE=local`).
+- `WpError` hints are code-aware now: `woodpresser_bad_token`,
+  `woodpresser_not_claimed`, `application_passwords_disabled`, `rest_no_route`,
+  `rest_forbidden` and network failures each name their fix.
+- Tests: a fake WordPress exercises the 401 / unreachable / bad-token /
+  missing-route paths of `doctor`, and a config test proves the token survives a
+  re-init across an `http`→`https` change (43 unit tests total).
+
 - `init` writes `woodpresser-bridge.zip` alongside the plugin file and prints the
   wp-admin upload URL. wp-admin only accepts archives, so the old "upload this
   .php" instruction was a dead end for anyone without SFTP. `woodpresser bridge
@@ -18,6 +34,11 @@ All notable changes to this project are documented here. The format follows
 
 ### Changed
 
+- `init` reuses the bridge token already stored for that URL instead of minting a
+  new one. Re-running init was rotating the token and breaking every other
+  machine pointed at the site; `--token` forces a rotation.
+- A site record with no `modes` now falls back to `core` only. The old fallback
+  enabled everything, so a hand-edited config could hand a model PHP execution.
 - README leads with the install form that works today
   (`npm i -g github:a-saeedia/woodpresser-mcp`); `npx` takes over once the
   package is on the registry.

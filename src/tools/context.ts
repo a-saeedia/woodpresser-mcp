@@ -19,7 +19,8 @@ export function createContext(siteName: string, site: SiteConfig): ToolContext {
 }
 
 export function hasMode(ctx: ToolContext, mode: 'core' | 'php' | 'elementor'): boolean {
-  return (ctx.site.modes ?? ['core', 'php', 'elementor']).includes(mode);
+  // normalizeSite always fills modes; the fallback must stay the safe one.
+  return (ctx.site.modes ?? ['core']).includes(mode);
 }
 
 function describe(error: unknown): { message: string; extra: Record<string, unknown> } {

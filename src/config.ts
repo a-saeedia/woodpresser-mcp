@@ -142,6 +142,31 @@ export function resolveSite(name?: string, cwd = process.cwd()): ResolvedSite {
   return { name: key, site, source };
 }
 
+/**
+ * Find a configured site by URL, project config first.
+ *
+ * Used by init so that re-running it does not mint a new bridge token and
+ * silently break every other machine holding the old one.
+ */
+export function findSiteByUrl(
+  url: string,
+  cwd = process.cwd(),
+): { name: string; site: SiteConfig } | null {
+  const target = normalizeUrl(url).replace(/^https?:\/\//, '');
+  for (const path of [projectConfigPath(cwd), userConfigPath()]) {
+    const config = readConfigFile(path);
+    if (!config) continue;
+    for (const [name, site] of Object.entries(config.sites)) {
+      // Scheme-agnostic: someone pasting http:// for a site stored as https://
+      // is the same site, and must keep its token.
+      if (normalizeUrl(site.url).replace(/^https?:\/\//, '') === target) {
+        return { name, site: normalizeSite(site) };
+      }
+    }
+  }
+  return null;
+}
+
 /** Store or update a site. */
 export function upsertSite(name: string, site: SiteConfig, path = userConfigPath()): ConfigFile {
   const config = readConfigFile(path) ?? emptyConfig();
