@@ -192,6 +192,8 @@ woodpresser doctor --site clinic
 | --- | --- | --- |
 | `401` on every call | Login password instead of an Application Password, or the `Authorization` header is stripped by the host | Create one at **Users → Profile → Application Passwords**; on LiteSpeed/Apache check that `HTTP_AUTHORIZATION` reaches PHP |
 | `403 woodpresser_bad_token` | Config and bridge disagree after a re-init or restore | `woodpresser bridge claim --site <name>` re-binds both sides |
+| `403 woodpresser_already_claimed` | A second machine pointed at a site whose bridge another machine already claimed; the bridge only rotates its token for the current holder | On the owning machine run `woodpresser sites`, copy the token, then `woodpresser init --token <token>` here |
+| `409 woodpresser_token_locked` | `WOODPRESSER_TOKEN` is defined in `wp-config.php`, so the token cannot change over HTTP | Put that same value in the client config (`--token`) |
 | `404 rest_no_route` | Bridge installed but not activated, or the plugin folder was uploaded inside another folder | Activate it in **Plugins**; the plugin file must be `wp-content/plugins/woodpresser-bridge/woodpresser-bridge.php` |
 | `428 woodpresser_not_claimed` | Bridge is active but no token was ever claimed | `woodpresser bridge claim --site <name>` |
 | `429 woodpresser_rate_limited` | More than 240 requests in a minute from one administrator | Batch your calls; the bucket resets after 60s |
